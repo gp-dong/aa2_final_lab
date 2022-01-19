@@ -1,0 +1,51 @@
+---
+- name: Manage OpenStack Servers
+  hosts: control_node
+  gather_facts: false
+  become: false
+  collections:
+    - gpte.openstack
+
+  roles:
+
+    - openstack_manage_inmemory_inventory
+
+- name: update resolve.conf
+  hosts: load_balancers,app_servers,database_servers
+  become: true
+  vars:
+    satellite_activationkey: gpte-labs-rhel8
+    satellite_org: prod
+  tasks:
+    - name: DNS IP updated
+      lineinfile:
+        state: present
+        path: /etc/sysconfig/network-scripts/ifcfg-eth0
+        line: "{{ item }}"
+      loop:
+        - PEERDNS=no
+        - DNS1=150.239.27.24
+        - DNS2=8.8.8.8
+    
+    - name: Restart NetworkManager
+      service:
+        name: NetworkManager
+        state: restarted
+
+    - name: install katello-ca-consumer package
+      yum:
+        name: http://satellite.example.com/pub/katello-ca-consumer-latest.noarch.rpm
+        state: present
+        disable_gpg_check: true
+
+    - name: register system and attach subs
+      redhat_subscription:
+        state: present
+        activationkey: "{{ satellite_activationkey }}"
+        org_id: "{{ satellite_org }}"
+        auto_attach: true
+
+    - name: Install firewalld
+      yum:
+        name: firewalld
+        state: latest

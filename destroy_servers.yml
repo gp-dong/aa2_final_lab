@@ -1,0 +1,19 @@
+---
+- name: Manage OpenStack Servers
+  hosts: control_node
+  gather_facts: false
+  become: false
+  collections:
+    - gpte.openstack
+  roles:
+    - openstack_manage_inmemory_inventory
+
+- hosts: control
+  tasks:
+  - name: Delete server instances
+    os_server:
+        name: "{{ __openstack_server.instance_name }}"
+        state: absent
+    loop: "{{ openstack_servers }}"
+    loop_control:
+        loop_var: __openstack_server
